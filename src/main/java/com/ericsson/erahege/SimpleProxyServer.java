@@ -1,3 +1,4 @@
+package com.ericsson.erahege;
 // This example is from _Java Examples in a Nutshell_. (http://www.oreilly.com)
 // Copyright (c) 1997 by David Flanagan
 // This example is provided WITHOUT ANY WARRANTY either expressed or implied.
@@ -6,6 +7,8 @@
 
 import java.io.*;
 import java.net.*;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * This class implements a simple single-threaded proxy server.
@@ -91,6 +94,7 @@ public class SimpleProxyServer {
                             while((bytes_read = from_client.read(request)) != -1) {
                                 to_server.write(request, 0, bytes_read);
                                 to_server.flush();
+                                System.out.println("==> " + new String(request));
                             }
                         }
                         catch (IOException e) {}
@@ -113,6 +117,12 @@ public class SimpleProxyServer {
                     while((bytes_read = from_server.read(reply)) != -1) {
                         to_client.write(reply, 0, bytes_read);
                         to_client.flush();
+
+                        char[] chars = new char[bytes_read];
+                        for (int i = 0; i < bytes_read; i++) {
+                            chars[i] = (char) reply[i];
+                        }
+                        System.out.println(String.format("<== '%s' (%d bytes)", new String(chars), bytes_read));
                     }
                 }
                 catch(IOException e) {}
