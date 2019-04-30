@@ -8,7 +8,8 @@ package com.ericsson.erahege;
 import java.io.*;
 import java.net.*;
 import java.util.Arrays;
-import java.util.List;
+
+import static java.util.Arrays.copyOfRange;
 
 /**
  * This class implements a simple single-threaded proxy server.
@@ -94,7 +95,8 @@ public class SimpleProxyServer {
                             while((bytes_read = from_client.read(request)) != -1) {
                                 to_server.write(request, 0, bytes_read);
                                 to_server.flush();
-                                System.out.println("==> " + new String(request));
+                                final String unescaped = new String(copyOfRange(request, 0, bytes_read));
+                                System.out.println("==> " + escape(unescaped));
                             }
                         }
                         catch (IOException e) {}
@@ -122,7 +124,8 @@ public class SimpleProxyServer {
                         for (int i = 0; i < bytes_read; i++) {
                             chars[i] = (char) reply[i];
                         }
-                        System.out.println(String.format("<== '%s' (%d bytes)", new String(chars), bytes_read));
+                        String escaped = escape(new String(chars));
+                        System.out.println(String.format("<== '%s' (%d bytes)", escaped, bytes_read));
                     }
                 }
                 catch(IOException e) {}
@@ -141,5 +144,28 @@ public class SimpleProxyServer {
                 catch(IOException e) {}
             }
         }
+    }
+
+    public static String escape(String s) {
+        String escaped = "";
+        for (char c : s.toCharArray()) {
+            switch (c) {
+                case '\0':
+                    escaped += "\\0";
+                    break;
+                case '\n':
+                    escaped += "\\n";
+                    break;
+                case '\r':
+                    escaped += "\\r";
+                    break;
+                case '\t':
+                    escaped += "\\t";
+                    break;
+                default:
+                    escaped += c;
+            }
+        }
+        return escaped;
     }
 }
