@@ -146,9 +146,13 @@ public class SimpleProxyServer {
         }
     }
 
-    public static String escape(String s) {
+    /**
+     * @param unescaped string potentially containing unprintable control characters.
+     * @return string where some control character have been replaced with printable escape sequences like \0, \r. \n and \t.
+     */
+    public static String escape(String unescaped) {
         String escaped = "";
-        for (char c : s.toCharArray()) {
+        for (char c : unescaped.toCharArray()) {
             switch (c) {
                 case '\0':
                     escaped += "\\0";
