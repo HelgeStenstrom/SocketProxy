@@ -162,26 +162,28 @@ public class SimpleProxyServer {
     public static String escape(String unescaped) {
         String escaped = "";
         for (char c : unescaped.toCharArray()) {
+            String escape;
             switch (c) {
                 case '\0':
-                    escaped += "\\0";
+                    escape = "\\0";
                     break;
                 case '\n':
-                    escaped += "\\n";
+                    escape = "\\n";
                     break;
                 case '\r':
-                    escaped += "\\r";
+                    escape = "\\r";
                     break;
                 case '\t':
-                    escaped += "\\t";
+                    escape = "\\t";
                     break;
                 default:
                     if (c >= ' ' && c < 127) {
-                        escaped += c;
+                        escape = "" + c;
                     } else {
-                        escaped += String.format("\\0x%02X", (int) c);
+                        escape = String.format("«0x%02X»", (int) c);
                     }
             }
+            escaped += escape;
         }
         return escaped;
     }
