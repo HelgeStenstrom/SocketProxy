@@ -15,7 +15,9 @@ import static java.util.Arrays.copyOfRange;
  * This class implements a simple single-threaded proxy server.
  **/
 public class SimpleProxyServer {
-    /** The main method parses arguments and passes them to runServer */
+    /**
+     * The main method parses arguments and passes them to runServer
+     */
     public static void main(String[] args) {
         try {
             // Check the number of arguments
@@ -32,8 +34,7 @@ public class SimpleProxyServer {
                     " on port " + localport);
             // And start running the server
             runServer(host, remoteport, localport);   // never returns
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             System.err.println(e);
             System.err.println("Usage: java SimpleProxyServer " +
                     "<host> <remoteport> <localport>");
@@ -56,7 +57,7 @@ public class SimpleProxyServer {
         byte[] reply = new byte[4096];
 
         // This is a server that never returns, so enter an infinite loop.
-        while(true) {
+        while (true) {
             // Variables to hold the sockets to the client and to the server.
             Socket client = null;
             Socket server = null;
@@ -67,13 +68,14 @@ public class SimpleProxyServer {
                 // Get client streams.  Make them final so they can
                 // be used in the anonymous thread below.
                 final InputStream fromClient = client.getInputStream();
-                final OutputStream toClient= client.getOutputStream();
+                final OutputStream toClient = client.getOutputStream();
 
                 // Make a connection to the real server
                 // If we cannot connect to the server, send an error to the
                 // client, disconnect, then continue waiting for another connection.
-                try { server = new Socket(host, remotePort); }
-                catch (IOException e) {
+                try {
+                    server = new Socket(host, remotePort);
+                } catch (IOException e) {
                     PrintWriter out = new PrintWriter(new OutputStreamWriter(toClient));
                     out.println("Proxy server cannot connect to " + host + ":" +
                             remotePort + ":\n" + e);
@@ -90,24 +92,26 @@ public class SimpleProxyServer {
                 // server.  We have to use a separate thread because requests and
                 // responses may be asynchronous.
                 Thread t = new Thread() {
+                    @Override
                     public void run() {
-                        int bytes_read;
+                        int bytesRead;
                         try {
-                            while((bytes_read = fromClient.read(request)) != -1) {
-                                toServer.write(request, 0, bytes_read);
+                            while ((bytesRead = fromClient.read(request)) != -1) {
+                                toServer.write(request, 0, bytesRead);
                                 toServer.flush();
-                                final String unescaped = new String(copyOfRange(request, 0, bytes_read));
+                                final String unescaped = new String(copyOfRange(request, 0, bytesRead));
                                 System.out.println("==> " + escape(unescaped));
                             }
-                        }
-                        catch (IOException e) {
+                        } catch (IOException e) {
                             // ignore exception
                         }
 
                         // the client closed the connection to us, so  close our
                         // connection to the server.  This will also cause the
                         // server-to-client loop in the main thread exit.
-                        try {toServer.close();} catch (IOException ignored) {
+                        try {
+                            toServer.close();
+                        } catch (IOException ignored) {
                             // ignore the exception
                         }
                     }
@@ -121,7 +125,7 @@ public class SimpleProxyServer {
                 // parallel with the client-to-server request thread above.
                 int bytesRead;
                 try {
-                    while((bytesRead = fromServer.read(reply)) != -1) {
+                    while ((bytesRead = fromServer.read(reply)) != -1) {
                         toClient.write(reply, 0, bytesRead);
                         toClient.flush();
 
@@ -132,23 +136,22 @@ public class SimpleProxyServer {
                         String escaped = escape(new String(chars));
                         System.out.printf("<== '%s' (%d bytes)%n", escaped, bytesRead);
                     }
-                }
-                catch(IOException ignored) {
+                } catch (IOException ignored) {
                     // ignore exception
                 }
 
                 // The server closed its connection to us, so close our
                 // connection to our client.  This will make the other thread exit.
                 toClient.close();
+            } catch (IOException e) {
+                System.err.println(e);
             }
-            catch (IOException e) { System.err.println(e); }
             // Close the sockets no matter what happens each time through the loop.
             finally {
                 try {
                     if (server != null) server.close();
                     if (client != null) client.close();
-                }
-                catch(IOException ignored) {
+                } catch (IOException ignored) {
                     // ignore exception
                 }
             }
@@ -160,31 +163,35 @@ public class SimpleProxyServer {
      * @return string where some control character have been replaced with printable escape sequences like \0, \r. \n and \t.
      */
     public static String escape(String unescaped) {
-        String escaped = "";
+        StringBuilder escaped = new StringBuilder();
         for (char c : unescaped.toCharArray()) {
-            String escape;
-            switch (c) {
-                case '\0':
-                    escape = "\\0";
-                    break;
-                case '\n':
-                    escape = "\\n";
-                    break;
-                case '\r':
-                    escape = "\\r";
-                    break;
-                case '\t':
-                    escape = "\\t";
-                    break;
-                default:
-                    if (c >= ' ' && c < 127) {
-                        escape = "" + c;
-                    } else {
-                        escape = String.format("«0x%02X»", (int) c);
-                    }
-            }
-            escaped += escape;
+            escaped.append(getEscape(c));
         }
-        return escaped;
+        return escaped.toString();
+    }
+
+    private static String getEscape(char c) {
+        String escape;
+        switch (c) {
+            case '\0':
+                escape = "\\0";
+                break;
+            case '\n':
+                escape = "\\n";
+                break;
+            case '\r':
+                escape = "\\r";
+                break;
+            case '\t':
+                escape = "\\t";
+                break;
+            default:
+                if (c >= ' ' && c < 127) {
+                    escape = "" + c;
+                } else {
+                    escape = String.format("«0x%02X»", (int) c);
+                }
+        }
+        return escape;
     }
 }
