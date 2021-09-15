@@ -167,7 +167,11 @@ public class SimpleProxyServer {
                     escaped += "\\t";
                     break;
                 default:
-                    escaped += c;
+                    if (c >= ' ' && c < 127) {
+                        escaped += c;
+                    } else {
+                        escaped += String.format("<0x%02X>", (int) c);
+                    }
             }
         }
         return escaped;
