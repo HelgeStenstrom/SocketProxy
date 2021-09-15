@@ -120,25 +120,7 @@ public class SimpleProxyServer {
                 // Start the client-to-server request thread running
                 t.start();
 
-                // Meanwhile, in the main thread, read the server's responses
-                // and pass them back to the client.  This will be done in
-                // parallel with the client-to-server request thread above.
-                int bytesRead;
-                try {
-                    while ((bytesRead = fromServer.read(reply)) != -1) {
-                        toClient.write(reply, 0, bytesRead);
-                        toClient.flush();
-
-                        char[] chars = new char[bytesRead];
-                        for (int i = 0; i < bytesRead; i++) {
-                            chars[i] = (char) reply[i];
-                        }
-                        String escaped = escape(new String(chars));
-                        System.out.printf("<== '%s' (%d bytes)%n", escaped, bytesRead);
-                    }
-                } catch (IOException ignored) {
-                    // ignore exception
-                }
+                readServerResponse(reply, toClient, fromServer);
 
                 // The server closed its connection to us, so close our
                 // connection to our client.  This will make the other thread exit.
@@ -155,6 +137,31 @@ public class SimpleProxyServer {
                     // ignore exception
                 }
             }
+        }
+    }
+
+    /**
+     * Meanwhile, in the main thread, read the server's responses
+     * and pass them back to the client.  This will be done in
+     * parallel with the client-to-server request thread above.
+     */
+    private static void readServerResponse(byte[] reply, OutputStream toClient, InputStream fromServer) {
+
+        try {
+            int bytesRead;
+            while ((bytesRead = fromServer.read(reply)) != -1) {
+                toClient.write(reply, 0, bytesRead);
+                toClient.flush();
+
+                char[] chars = new char[bytesRead];
+                for (int i = 0; i < bytesRead; i++) {
+                    chars[i] = (char) reply[i];
+                }
+                String escaped = escape(new String(chars));
+                System.out.printf("<== '%s' (%d bytes)%n", escaped, bytesRead);
+            }
+        } catch (IOException ignored) {
+            // ignore exception
         }
     }
 
