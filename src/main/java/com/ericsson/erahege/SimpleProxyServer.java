@@ -6,8 +6,8 @@ package com.ericsson.erahege;
 // For any commercial use, see http://www.davidflanagan.com/javaexamples
 
 import java.io.*;
-import java.net.*;
-import java.util.Arrays;
+import java.net.ServerSocket;
+import java.net.Socket;
 
 import static java.util.Arrays.copyOfRange;
 
@@ -16,7 +16,7 @@ import static java.util.Arrays.copyOfRange;
  **/
 public class SimpleProxyServer {
     /** The main method parses arguments and passes them to runServer */
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         try {
             // Check the number of arguments
             if (args.length != 3)
@@ -42,9 +42,9 @@ public class SimpleProxyServer {
 
     /**
      * This method runs a single-threaded proxy server for
-     * host:remoteport on the specified local port.  It never returns.
+     * host:remotePort on the specified local port.  It never returns.
      **/
-    public static void runServer(String host, int remoteport, int localport)
+    public static void runServer(String host, int remotePort, int localport)
             throws IOException {
         // Create a ServerSocket to listen for connections with
         ServerSocket ss = new ServerSocket(localport);
@@ -58,32 +58,33 @@ public class SimpleProxyServer {
         // This is a server that never returns, so enter an infinite loop.
         while(true) {
             // Variables to hold the sockets to the client and to the server.
-            Socket client = null, server = null;
+            Socket client = null;
+            Socket server = null;
             try {
                 // Wait for a connection on the local port
                 client = ss.accept();
 
                 // Get client streams.  Make them final so they can
                 // be used in the anonymous thread below.
-                final InputStream from_client = client.getInputStream();
-                final OutputStream to_client= client.getOutputStream();
+                final InputStream fromClient = client.getInputStream();
+                final OutputStream toClient= client.getOutputStream();
 
                 // Make a connection to the real server
                 // If we cannot connect to the server, send an error to the
                 // client, disconnect, then continue waiting for another connection.
-                try { server = new Socket(host, remoteport); }
+                try { server = new Socket(host, remotePort); }
                 catch (IOException e) {
-                    PrintWriter out = new PrintWriter(new OutputStreamWriter(to_client));
+                    PrintWriter out = new PrintWriter(new OutputStreamWriter(toClient));
                     out.println("Proxy server cannot connect to " + host + ":" +
-                            remoteport + ":\n" + e);
+                            remotePort + ":\n" + e);
                     out.flush();
                     client.close();
                     continue;
                 }
 
                 // Get server streams.
-                final InputStream from_server = server.getInputStream();
-                final OutputStream to_server = server.getOutputStream();
+                final InputStream fromServer = server.getInputStream();
+                final OutputStream toServer = server.getOutputStream();
 
                 // Make a thread to read the client's requests and pass them to the
                 // server.  We have to use a separate thread because requests and
@@ -92,19 +93,23 @@ public class SimpleProxyServer {
                     public void run() {
                         int bytes_read;
                         try {
-                            while((bytes_read = from_client.read(request)) != -1) {
-                                to_server.write(request, 0, bytes_read);
-                                to_server.flush();
+                            while((bytes_read = fromClient.read(request)) != -1) {
+                                toServer.write(request, 0, bytes_read);
+                                toServer.flush();
                                 final String unescaped = new String(copyOfRange(request, 0, bytes_read));
                                 System.out.println("==> " + escape(unescaped));
                             }
                         }
-                        catch (IOException e) {}
+                        catch (IOException e) {
+                            // ignore exception
+                        }
 
                         // the client closed the connection to us, so  close our
                         // connection to the server.  This will also cause the
                         // server-to-client loop in the main thread exit.
-                        try {to_server.close();} catch (IOException e) {}
+                        try {toServer.close();} catch (IOException ignored) {
+                            // ignore the exception
+                        }
                     }
                 };
 
@@ -114,25 +119,27 @@ public class SimpleProxyServer {
                 // Meanwhile, in the main thread, read the server's responses
                 // and pass them back to the client.  This will be done in
                 // parallel with the client-to-server request thread above.
-                int bytes_read;
+                int bytesRead;
                 try {
-                    while((bytes_read = from_server.read(reply)) != -1) {
-                        to_client.write(reply, 0, bytes_read);
-                        to_client.flush();
+                    while((bytesRead = fromServer.read(reply)) != -1) {
+                        toClient.write(reply, 0, bytesRead);
+                        toClient.flush();
 
-                        char[] chars = new char[bytes_read];
-                        for (int i = 0; i < bytes_read; i++) {
+                        char[] chars = new char[bytesRead];
+                        for (int i = 0; i < bytesRead; i++) {
                             chars[i] = (char) reply[i];
                         }
                         String escaped = escape(new String(chars));
-                        System.out.println(String.format("<== '%s' (%d bytes)", escaped, bytes_read));
+                        System.out.printf("<== '%s' (%d bytes)%n", escaped, bytesRead);
                     }
                 }
-                catch(IOException e) {}
+                catch(IOException ignored) {
+                    // ignore exception
+                }
 
                 // The server closed its connection to us, so close our
                 // connection to our client.  This will make the other thread exit.
-                to_client.close();
+                toClient.close();
             }
             catch (IOException e) { System.err.println(e); }
             // Close the sockets no matter what happens each time through the loop.
@@ -141,7 +148,9 @@ public class SimpleProxyServer {
                     if (server != null) server.close();
                     if (client != null) client.close();
                 }
-                catch(IOException e) {}
+                catch(IOException ignored) {
+                    // ignore exception
+                }
             }
         }
     }
